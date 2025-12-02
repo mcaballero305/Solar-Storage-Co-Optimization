@@ -1,4 +1,0 @@
-[console_scripts]
-microgrid-launch-files = microgrid.scripts.parallel_sweep:main
-microgrid-single-run = microgrid.scripts.run_single_loop:main
-microgrid-sweep-run = microgrid.scripts.run_sweep:main
