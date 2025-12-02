@@ -18,7 +18,7 @@ from microgrid.core.model_helpers import (
 from microgrid.core.pv_sizing_limits import compute_pv_sizing_limits
 
 
-from scripts.run_single_loop import run_single_pv  # or: from .run_single_loop import run_single_pv
+from microgrid.scripts.run_single_loop import run_single_pv  # or: from .run_single_loop import run_single_pv
 
 
 # === Parse Command-Line Arguments ===
