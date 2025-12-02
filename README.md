@@ -2,7 +2,10 @@
 
 ## Setup
 
+# Installation
 git clone git@github.com:mcaballero305/Solar-Storage-Co-Optimization
+
+
 cd Solar-Storage-Co-Optimization
 
 python -m venv .venv
