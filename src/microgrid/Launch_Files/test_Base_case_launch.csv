@@ -1,0 +1,4 @@
+itc_pv,itc_bat,enable_sell,enforce_limit_flag,A_tot,offset_price,insolation_mult
+0,0,1,1,200,0,1
+0,0,1,1,400,0,1
+0,0,1,1,600,0,1

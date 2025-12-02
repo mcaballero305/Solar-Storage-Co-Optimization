@@ -12,15 +12,26 @@ from amplpy import AMPL, add_to_path
 
 
 # === Base directories (single source of truth) ================================
-# Repo root assumed at: <home>/Solar-Storage-Co-Optimization
-BASE_DIR = Path.home() / "Solar-Storage-Co-Optimization"
+# Discover repo root automatically from this file:
+#   .../Solar-Storage-Co-Optimization/src/microgrid/core/model_helpers.py
+THIS_FILE = Path(__file__).resolve()
+REPO_ROOT = THIS_FILE.parents[3]  # -> .../Solar-Storage-Co-Optimization
 
-# If you want to keep these legacy folder names:
-INPUT_DIR = BASE_DIR / "Input_Files"
-CODE_DIR = BASE_DIR / "src" / "microgrid" / "solar_storage_model"
-PY_DIR = BASE_DIR / "Python"       # if missing, we'll fall back to CODE_DIR
-TXT_DIR = BASE_DIR / "Txt_files"
-OUT_DIR = BASE_DIR / "Outputs"
+# For backward compatibility with older code that expected BASE_DIR:
+BASE_DIR = REPO_ROOT
+
+# microgrid package root
+PKG_ROOT = REPO_ROOT / "src" / "microgrid"
+
+# Inputs + model locations inside the package
+INPUT_DIR = PKG_ROOT / "input_files"          # you must create this folder
+CODE_DIR  = PKG_ROOT / "solar_storage_model"  # contains solar_storage_model.mod
+
+
+# Other legacy-style folders kept at repo root
+PY_DIR  = REPO_ROOT / "Python"      # if missing, we'll fall back to CODE_DIR
+TXT_DIR = REPO_ROOT / "Txt_files"
+OUT_DIR = REPO_ROOT / "Outputs"
 
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 TXT_DIR.mkdir(parents=True, exist_ok=True)
@@ -34,9 +45,10 @@ AMPL_PATH = r"C:\Users\mcaballero\AMPL"
 # === Model & input tables ====================================================
 # NOTE: Adjust file names here if your model/data/table filenames differ.
 MODEL_PATH = CODE_DIR / "solar_storage_model.mod"
-DATA_PATH = INPUT_DIR / "Hourly_parameter_data.csv"
-PV_TABLE = INPUT_DIR / "bi_pv_table.csv"      # bi_pv_table, 2test_pv_table, Base_pv_table
-BAT_TABLE = INPUT_DIR / "bat_tab_lion.csv"
+DATA_PATH  = INPUT_DIR / "Hourly_parameter_data.csv"
+PV_TABLE   = INPUT_DIR / "bi_pv_table.csv"      # bi_pv_table, 2test_pv_table, Base_pv_table
+BAT_TABLE  = INPUT_DIR / "bat_tab_lion.csv"
+
 
 
 # === Filename helpers for hourly CSVs ========================================

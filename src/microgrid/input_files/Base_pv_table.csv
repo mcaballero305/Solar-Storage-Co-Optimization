@@ -1,0 +1,4 @@
+PV_types,STC_eff,temp_coeff,pv_cost,O_M,kW_stc
+Mono Si PERC,0.205,-0.0036,1180,18,0.328
+Mono Bifacial,0.225,-0.0036,1230,20,0.36
+CdTe,0.175,-0.0028,1080,14,0.28
