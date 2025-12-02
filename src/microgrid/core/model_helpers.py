@@ -1,4 +1,4 @@
-
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import math
@@ -12,9 +12,9 @@ from pathlib import Path
 
 
 # === Base directories (single source of truth) ===
-BASE_DIR   = r"C:\Users\mcaballero\Desktop\Final Dissertation Runs"
+BASE_DIR = Path.home() / "Solar-Storage-Co-Optimization"
 INPUT_DIR  = os.path.join(BASE_DIR, "Input_Files")
-CODE_DIR   = os.path.join(BASE_DIR, "Code_Files")
+CODE_DIR   = os.path.join(BASE_DIR, "src/microgrid/solar_storage_model")
 PY_DIR     = os.path.join(BASE_DIR, "Python")  # if missing, we'll fall back to CODE_DIR
 TXT_DIR    = os.path.join(BASE_DIR, "Txt_files")
 OUT_DIR    = os.path.join(BASE_DIR, "Outputs")  # new: consolidated outputs root
@@ -97,7 +97,7 @@ AMPL_PATH  = r"C:\Users\mcaballero\AMPL"
 
 # === Model & input tables ===
 # NOTE: Adjust file names here if your model/data/table filenames differ.
-MODEL_PATH = os.path.join(CODE_DIR, "new_emissions_OPTIONA.mod")  # e.g., Emissions_8_29.mod
+MODEL_PATH = os.path.join(CODE_DIR, "solar_storage_model.mod")  # e.g., Emissions_8_29.mod
 DATA_PATH  = os.path.join(INPUT_DIR, "Hourly_parameter_data.csv")
 PV_TABLE   = os.path.join(INPUT_DIR, "bi_pv_table.csv") #bi_pv_table, 2test_pv_table, Base_pv_table
 BAT_TABLE  = os.path.join(INPUT_DIR, "bat_tab_lion.csv")
