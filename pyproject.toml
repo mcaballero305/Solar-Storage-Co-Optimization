@@ -28,9 +28,9 @@ dev = [
 ]
 
 [project.scripts]
-single-run = "microgrid.scripts.run_single_loop:main"
-sweep-setup = "microgrid.scripts.run_sweep:main"
-launch-files = "microgrid.scripts.parallel_sweep:main"
+microgrid-single-run   = "microgrid.scripts.run_single_loop:main"
+microgrid-sweep-run    = "microgrid.scripts.run_sweep:main"
+microgrid-launch-files = "microgrid.scripts.parallel_sweep:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
