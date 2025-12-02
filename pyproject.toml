@@ -13,11 +13,11 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 dependencies = [
-  "amplpy>=0.13",   # Python–AMPL bridge
-  "pandas>=2.0",   # DataFrames, CSV/Excel IO
-  "numpy>=1.24",   # Numerical utilities
-  "openpyxl>=3.1", # Excel read/write engine used by pandas
-  "tqdm>=4.66",    # Progress bars in parallel launchers
+  "amplpy>=0.13",
+  "pandas>=2.0",
+  "numpy>=1.24",
+  "openpyxl>=3.1",
+  "tqdm>=4.66",
 ]
 
 [project.optional-dependencies]
@@ -27,18 +27,13 @@ dev = [
   "isort>=5.13",
 ]
 
+[project.scripts]
+single-run = "microgrid.scripts.run_single_loop:main"
+sweep-setup = "microgrid.scripts.run_sweep:main"
+launch-files = "microgrid.scripts.parallel_sweep:main"
+
 [tool.setuptools]
-# Treat these as standalone modules installable via pip
-py-modules = [
-  "Completed_Loop_0_hour_new",
-  "Completed_sweep_script_4_26_new",
-  "excel_utils_w_limit_bat",
-  "logging_utils_new",
-  "model_helpers_new",
-  "parallel_sweep_launcher",
-  "parallel_sweep_launcher_fixed",
-  "pv_sizing_limits",
-]
+package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
