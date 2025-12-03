@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from datetime import datetime
 import math
-import platform 
+import platform
+import logging
+import json
 import os
 import glob
 
@@ -11,41 +13,138 @@ import pandas as pd
 import numpy as np
 from amplpy import AMPL, add_to_path
 
+logger = logging.getLogger(__name__)
 
 # === AMPL path ===============================================================
 
-def _guess_default_ampl_path() -> str:
-    """
-    Try to guess a reasonable default AMPL install directory based on OS
-    and the current user's home directory.
+_AMPL_ENV_VAR = "AMPL_DIR"
+_AMPL_CONFIG_FILENAME = "ampl_config.json"
 
-    Users can always override this by setting the AMPL_PATH environment
-    variable explicitly.
+
+def _find_project_root(marker_files=("pyproject.toml", "setup.cfg", ".git")) -> Path:
+    """
+    Walk up from this file until we find a directory that looks like
+    the project root (contains one of the marker files). If nothing is
+    found, fall back to the parent directory of this file.
+    """
+    here = Path(__file__).resolve()
+    for parent in [here] + list(here.parents):
+        if any((parent / m).exists() for m in marker_files):
+            return parent
+    # Fallback: src/microgrid/core/ -> project root is three levels up
+    return here.parents[3]
+
+
+def _load_ampl_dir_from_config() -> Path | None:
+    """
+    Try to load AMPL directory from ampl_config.json at the project root.
+
+    Expected JSON structure:
+        { "ampl_dir": "C:/ampl" }
+    """
+    root = _find_project_root()
+    cfg_path = root / _AMPL_CONFIG_FILENAME
+    if not cfg_path.exists():
+        return None
+
+    try:
+        data = json.loads(cfg_path.read_text())
+        ampl_dir = data.get("ampl_dir")
+        if ampl_dir:
+            return Path(ampl_dir).expanduser()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to parse %s: %s", cfg_path, exc)
+
+    return None
+
+
+def _candidate_ampl_dirs() -> list[Path]:
+    """
+    OS-specific fallback locations to check if neither the environment
+    variable nor ampl_config.json are provided.
     """
     system = platform.system().lower()
-    home = Path.home()
-
-    # Candidate locations (in order of preference)
-    if system == "windows":
-        candidates = [
-            home / "AMPL",  
-            home / "ampl",
-        ]
-    else:
-        candidates = [
-            home / "ampl",   
-            Path("/opt/ampl"),
-        ]
-
-    # If any of the candidates actually exist on disk, use the first that does
-    for c in candidates:
-        if c.exists():
-            return str(c)
-
-    # Fall back to the first candidate even if it doesn't exist yet
-    return str(candidates[0])
+    if "windows" in system:
+        return [Path(r"C:\ampl"), Path(r"C:\AMPL")]
+    # Linux / macOS
+    return [Path("/opt/ampl"), Path("/usr/local/ampl"), Path("/usr/local/AMPL")]
 
 
+def get_ampl_executable() -> str:
+    """
+    Resolve the full path to the AMPL executable.
+
+    Resolution order:
+        1. AMPL_DIR environment variable
+        2. ampl_config.json at project root
+        3. Common install directories (per OS)
+
+    Raises:
+        RuntimeError if no valid AMPL executable is found.
+    """
+    system = platform.system().lower()
+    exe_name = "ampl.exe" if "windows" in system else "ampl"
+
+    # 1) Environment variable
+    env_dir = os.environ.get(_AMPL_ENV_VAR)
+    if env_dir:
+        ampl_dir = Path(env_dir).expanduser()
+        ampl_path = ampl_dir / exe_name
+        if ampl_path.is_file():
+            logger.info("Using AMPL from %s (via %s)", ampl_path, _AMPL_ENV_VAR)
+            return str(ampl_path)
+        logger.warning(
+            "%s is set to %s but %s was not found there.",
+            _AMPL_ENV_VAR,
+            ampl_dir,
+            exe_name,
+        )
+
+    # 2) ampl_config.json at project root
+    cfg_dir = _load_ampl_dir_from_config()
+    if cfg_dir:
+        ampl_path = cfg_dir / exe_name
+        if ampl_path.is_file():
+            logger.info("Using AMPL from %s (via ampl_config.json)", ampl_path)
+            return str(ampl_path)
+        logger.warning(
+            "ampl_config.json specifies %s but %s was not found there.",
+            cfg_dir,
+            exe_name,
+        )
+
+    # 3) Common install locations
+    for cand in _candidate_ampl_dirs():
+        ampl_path = cand / exe_name
+        if ampl_path.is_file():
+            logger.info("Using AMPL from %s (auto-detected)", ampl_path)
+            return str(ampl_path)
+
+    # If we got here, nothing worked
+    msg_lines = [
+        "Could not locate the AMPL executable.",
+        "",
+        "Tried:",
+        "  1) Environment variable AMPL_DIR",
+        "  2) ampl_config.json at the project root",
+        "  3) Common install locations (C:/ampl, /opt/ampl, /usr/local/ampl, ...)",
+        "",
+        "To fix this, either:",
+        f"  - Set {_AMPL_ENV_VAR} to your AMPL directory, e.g.",
+        "        set AMPL_DIR=C:\\ampl            (Windows, PowerShell)",
+        "        export AMPL_DIR=/opt/ampl       (Linux/macOS, bash)",
+        "    OR",
+        f"  - Create {_AMPL_CONFIG_FILENAME} at the project root with:",
+        '        { "ampl_dir": "C:/ampl" }',
+    ]
+    raise RuntimeError("\n".join(msg_lines))
+
+
+# Global, so the rest of the module can just import/use it
+AMPL_EXECUTABLE = get_ampl_executable()
+AMPL_DIR = Path(AMPL_EXECUTABLE).parent
+
+# === Repo + data paths =======================================================
 
 THIS_FILE = Path(__file__).resolve()
 REPO_ROOT = THIS_FILE.parents[3]  # -> .../Solar-Storage-Co-Optimization
@@ -58,31 +157,22 @@ PKG_ROOT = REPO_ROOT / "src" / "microgrid"
 
 # Inputs + model locations inside the package
 INPUT_DIR = PKG_ROOT / "input_files"          # you must create this folder
-CODE_DIR  = PKG_ROOT / "solar_storage_model"  # contains solar_storage_model.mod
-
+CODE_DIR = PKG_ROOT / "solar_storage_model"   # contains solar_storage_model.mod
 
 # Other legacy-style folders kept at repo root
-PY_DIR  = REPO_ROOT / "Python"      # if missing, we'll fall back to CODE_DIR
+PY_DIR = REPO_ROOT / "Python"      # if missing, we'll fall back to CODE_DIR
 TXT_DIR = REPO_ROOT / "Txt_files"
 OUT_DIR = REPO_ROOT / "Outputs"
 
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 TXT_DIR.mkdir(parents=True, exist_ok=True)
 
-
-# Prefer explicit env var, fall back to OS/home-based guess
-DEFAULT_AMPL_PATH = _guess_default_ampl_path()
-AMPL_PATH = os.environ.get("AMPL_PATH", DEFAULT_AMPL_PATH)
-
-
-
 # === Model & input tables ====================================================
 # NOTE: Adjust file names here if your model/data/table filenames differ.
 MODEL_PATH = CODE_DIR / "solar_storage_model.mod"
-DATA_PATH  = INPUT_DIR / "Hourly_parameter_data.csv"
-PV_TABLE   = INPUT_DIR / "bi_pv_table.csv"      # bi_pv_table, 2test_pv_table, Base_pv_table
-BAT_TABLE  = INPUT_DIR / "bat_tab_lion.csv"
-
+DATA_PATH = INPUT_DIR / "Hourly_parameter_data.csv"
+PV_TABLE = INPUT_DIR / "bi_pv_table.csv"      # bi_pv_table, 2test_pv_table, Base_pv_table
+BAT_TABLE = INPUT_DIR / "bat_tab_lion.csv"
 
 
 # === Filename helpers for hourly CSVs ========================================
@@ -264,12 +354,13 @@ def get_paths():
         data_path=str(DATA_PATH),
         pv_table_path=str(PV_TABLE),
         bat_table_path=str(BAT_TABLE),
-        ampl_path=AMPL_PATH,
+        ampl_path=str(AMPL_DIR),
+        ampl_executable=str(AMPL_EXECUTABLE),
     )
 
 
 def create_ampl():
-    add_to_path(AMPL_PATH)
+    add_to_path(str(AMPL_DIR))
     return AMPL()
 
 
@@ -477,4 +568,3 @@ def compute_monthly_summary(hourly_df: pd.DataFrame, data: pd.DataFrame, ampl) -
 
     monthly_df = pd.DataFrame(monthly_data)
     return monthly_df
-
