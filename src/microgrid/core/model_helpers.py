@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from datetime import datetime
 import math
+import platform 
 import os
 import glob
 
@@ -11,9 +12,41 @@ import numpy as np
 from amplpy import AMPL, add_to_path
 
 
-# === Base directories (single source of truth) ================================
-# Discover repo root automatically from this file:
-#   .../Solar-Storage-Co-Optimization/src/microgrid/core/model_helpers.py
+# === AMPL path ===============================================================
+
+def _guess_default_ampl_path() -> str:
+    """
+    Try to guess a reasonable default AMPL install directory based on OS
+    and the current user's home directory.
+
+    Users can always override this by setting the AMPL_PATH environment
+    variable explicitly.
+    """
+    system = platform.system().lower()
+    home = Path.home()
+
+    # Candidate locations (in order of preference)
+    if system == "windows":
+        candidates = [
+            home / "AMPL",  
+            home / "ampl",
+        ]
+    else:
+        candidates = [
+            home / "ampl",   
+            Path("/opt/ampl"),
+        ]
+
+    # If any of the candidates actually exist on disk, use the first that does
+    for c in candidates:
+        if c.exists():
+            return str(c)
+
+    # Fall back to the first candidate even if it doesn't exist yet
+    return str(candidates[0])
+
+
+
 THIS_FILE = Path(__file__).resolve()
 REPO_ROOT = THIS_FILE.parents[3]  # -> .../Solar-Storage-Co-Optimization
 
@@ -37,9 +70,10 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 TXT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# === AMPL path ===============================================================
-# TODO: make this configurable later (env var, config file, etc.)
-AMPL_PATH = r"C:\Users\mcaballero\AMPL"
+# Prefer explicit env var, fall back to OS/home-based guess
+DEFAULT_AMPL_PATH = _guess_default_ampl_path()
+AMPL_PATH = os.environ.get("AMPL_PATH", DEFAULT_AMPL_PATH)
+
 
 
 # === Model & input tables ====================================================
