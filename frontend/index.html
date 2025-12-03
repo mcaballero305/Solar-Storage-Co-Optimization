@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Microgrid Single Run</title>
+</head>
+<body>
+  <h1>Run a Single PV/Battery Configuration</h1>
+
+  <form id="single-form" method="post" enctype="multipart/form-data" action="http://localhost:8000/run-single">
+    <div>
+      <label>PV type:
+        <input name="pv_type" value="Mono Si PERC">
+      </label>
+    </div>
+
+    <div>
+      <label>Battery type:
+        <input name="bat_type" value="LFP_2h">
+      </label>
+    </div>
+
+    <div>
+      <label>Offset price:
+        <input name="offset_price" value="0.0" type="number" step="0.01">
+      </label>
+    </div>
+
+    <div>
+      <label>Input CSV:
+        <input name="input_csv" type="file" accept=".csv">
+      </label>
+    </div>
+
+    <button type="submit">Run</button>
+  </form>
+</body>
+</html>
