@@ -1,96 +1,126 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Solar + Storage MIP Runner</title>
+  <meta charset="UTF-8" />
+  <title>Solar-Storage Co-Optimization – Web Runner</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 720px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+    }
+    h1, h2 {
+      margin-bottom: 0.25rem;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-top: 1rem;
+    }
+    label {
+      display: block;
+      margin-top: 0.75rem;
+      font-weight: 600;
+    }
+    input[type="file"],
+    input[type="text"],
+    input[type="number"] {
+      margin-top: 0.25rem;
+      padding: 0.4rem 0.5rem;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      border: 1px solid #333;
+      background-color: #333;
+      color: white;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    button:hover {
+      background-color: #111;
+    }
+    .help {
+      font-size: 0.85rem;
+      color: #555;
+    }
+  </style>
 </head>
 <body>
-  <h1>Solar–Storage MIP: Single Scenario</h1>
+  <h1>Solar-Storage Co-Optimization</h1>
+  <p>
+    Upload a sweep definition CSV to run the AMPL-based MILP and download a ZIP
+    containing Excel + CSV output files.
+  </p>
 
-  <form id="scenario-form">
-    <label>
-      PV Array Area A_tot (m²):
-      <input type="number" step="1" name="A_tot" required />
-    </label><br />
+  <div class="card">
+    <h2>Run Sweep</h2>
+    <form
+      id="sweep-form"
+      action="/run-sweep"
+      method="post"
+      enctype="multipart/form-data"
+    >
+      <label for="sweep_file">
+        Sweep CSV
+        <span class="help">(e.g., <code>sweep_1_itc_area.csv</code>)</span>
+      </label>
+      <input
+        type="file"
+        id="sweep_file"
+        name="sweep_file"
+        accept=".csv"
+        required
+      />
 
-    <label>
-      PV ITC (fraction, e.g. 0.3 for 30%):
-      <input type="number" step="0.01" name="itc_pv" value="0.0" />
-    </label><br />
+      <label for="run_id">
+        Run ID
+        <span class="help">(optional; used in folder and ZIP names)</span>
+      </label>
+      <input
+        type="text"
+        id="run_id"
+        name="run_id"
+        placeholder="api_run_YYYYMMDD_HHMMSS (auto-generated if blank)"
+      />
 
-    <label>
-      Battery ITC (fraction):
-      <input type="number" step="0.01" name="itc_bat" value="0.0" />
-    </label><br />
+      <label for="sheet_id">
+        Sheet ID
+        <span class="help">(optional; label used in Excel sheets)</span>
+      </label>
+      <input
+        type="text"
+        id="sheet_id"
+        name="sheet_id"
+        placeholder="Defaults to Run ID"
+      />
 
-    <label>
-      Offset price ($/tCO₂):
-      <input type="number" step="0.01" name="offset_price" value="0.0" />
-    </label><br />
+      <label for="insolation_mult">
+        Insolation Multiplier
+        <span class="help">(1.0 = baseline; e.g., 0.9 for -10%, 1.1 for +10%)</span>
+      </label>
+      <input
+        type="number"
+        id="insolation_mult"
+        name="insolation_mult"
+        step="0.01"
+        value="1.0"
+      />
 
-    <label>
-      Enable sell to grid?
-      <select name="enable_sell">
-        <option value="1" selected>Yes</option>
-        <option value="0">No</option>
-      </select>
-    </label><br />
+      <button type="submit">Run Sweep</button>
+    </form>
 
-    <label>
-      Enforce PV sizing limit?
-      <select name="enforce_limit_flag">
-        <option value="0" selected>No</option>
-        <option value="1">Yes</option>
-      </select>
-    </label><br />
-
-    <label>
-      Insolation multiplier (e.g., 0.9, 1.0, 1.1):
-      <input type="number" step="0.01" name="insolation_mult" value="1.0" />
-    </label><br />
-
-    <button type="submit">Run Scenario</button>
-  </form>
-
-  <p id="status"></p>
-
-  <script>
-    const form = document.getElementById("scenario-form");
-    const status = document.getElementById("status");
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      status.textContent = "Running...";
-
-      const formData = new FormData(form);
-      formData.append("run_id", "web_form");
-      formData.append("sheet_id", "WebForm");
-
-      const resp = await fetch("/run-sweep-form", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        status.textContent = "Error: " + (err.error || resp.statusText);
-        return;
-      }
-
-      // Download the returned ZIP
-      const blob = await resp.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "solar_storage_outputs.zip";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      status.textContent = "Download started.";
-    });
-  </script>
+    <p class="help">
+      When the run completes, your browser will automatically download a ZIP
+      file containing the results.
+    </p>
+  </div>
 </body>
 </html>
-
-
