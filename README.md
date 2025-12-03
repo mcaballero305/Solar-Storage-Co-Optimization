@@ -82,11 +82,30 @@ Or download the repository as a ZIP directly from the GitHub page and unzip it l
 
 4. **AMPL Path Configuration**
 
-   The current version expects the AMPL path to be configured in:
+   The recommended way to tell the code where AMPL is installed is:
 
-       src/microgrid/core/model_helpers.py
+   1. **Environment variable (preferred)**  
+      Set `AMPL_DIR` to the directory that contains the `ampl` / `ampl.exe` binary.
 
-   Update the relevant variables in that file so they point to the directory containing your `ampl` / `ampl.exe` executable.
+      - Windows (PowerShell):  
+            setx AMPL_DIR "C:\ampl"
+      - Linux/macOS (bash):  
+            export AMPL_DIR=/opt/ampl
+
+   2. **Config file (alternative)**  
+      Create a file named `ampl_config.json` in the project root (same folder as `pyproject.toml`) with:
+
+          { "ampl_dir": "C:/ampl" }
+
+      Use forward slashes or escaped backslashes on Windows.
+
+   At runtime, the helper `get_ampl_executable()` in `src/microgrid/core/model_helpers.py`:
+
+   - First checks `AMPL_DIR`  
+   - Then checks `ampl_config.json`  
+   - Finally, tries common install paths (`C:\ampl`, `/opt/ampl`, `/usr/local/ampl`, etc.)
+
+   If none of these work, it raises a clear error explaining how to set `AMPL_DIR` or create `ampl_config.json`.
 
 ---
 
