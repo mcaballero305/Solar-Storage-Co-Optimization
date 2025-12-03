@@ -1,0 +1,32 @@
+2025-12-03 00:25:28,633 [INFO] [sweep] Insolation multiplier (raw=1.0) -> 1.0
+2025-12-03 00:25:28,633 [INFO] [Sweep_A200] Full combined parameters: {'itc_pv': 0.0, 'itc_bat': 0.3, 'enable_sell': 1.0, 'enforce_limit_flag': 1.0, 'A_tot': 200.0, 'offset_price': 0.0, 'insolation_mult': 1.0, 'sweep_file': 'src\\microgrid\\Launch_files\\sweep_1_itc_area.csv'}
+2025-12-03 00:25:28,763 [INFO] [Sweep_A200] Running simulation for PV type: Mono Bifacial, Battery type: Li-ion LFP
+2025-12-03 00:25:29,024 [DEBUG] === Simulation Debug Parameters ===
+2025-12-03 00:25:29,024 [DEBUG] CRF_pv: 0.078227
+2025-12-03 00:25:29,025 [DEBUG] pv_cost[Mono Bifacial]: 1230
+2025-12-03 00:25:29,026 [DEBUG] O_M[Mono Bifacial]: 20
+2025-12-03 00:25:29,027 [DEBUG] ac_e[Li-ion LFP]: 55.39
+2025-12-03 00:25:29,027 [DEBUG] ac_p[Li-ion LFP]: 49.23
+2025-12-03 00:25:44,544 [DEBUG] [Sweep_A200] Using sheet name: 'H_A200_Mono_BF_Li-io_Sweep_A200' (generated: 'A200_Mono_BF_Li-io_Sweep_A200')
+2025-12-03 00:26:50,788 [INFO] [Sweep_A200] Completed simulation for configuration: Mono Bifacial_Li-ion LFP_ITC0.00_ITC0.30_Lim1.00_Sell1.00
+2025-12-03 00:26:50,788 [ERROR] [Sweep_A200] Error: name '_safe_load_workbook' is not defined
+2025-12-03 00:26:50,793 [INFO] [Sweep_A200] Insolation multiplier (raw=1.0) -> 1.0
+2025-12-03 00:26:50,793 [INFO] [Sweep_A400] Full combined parameters: {'itc_pv': 0.0, 'itc_bat': 0.3, 'enable_sell': 1.0, 'enforce_limit_flag': 1.0, 'A_tot': 400.0, 'offset_price': 0.0, 'insolation_mult': 1.0, 'sweep_file': 'src\\microgrid\\Launch_files\\sweep_1_itc_area.csv'}
+2025-12-03 00:26:50,925 [INFO] [Sweep_A400] Running simulation for PV type: Mono Bifacial, Battery type: Li-ion LFP
+2025-12-03 00:26:51,158 [DEBUG] === Simulation Debug Parameters ===
+2025-12-03 00:26:51,159 [DEBUG] CRF_pv: 0.078227
+2025-12-03 00:26:51,160 [DEBUG] pv_cost[Mono Bifacial]: 1230
+2025-12-03 00:26:51,160 [DEBUG] O_M[Mono Bifacial]: 20
+2025-12-03 00:26:51,161 [DEBUG] ac_e[Li-ion LFP]: 55.39
+2025-12-03 00:26:51,161 [DEBUG] ac_p[Li-ion LFP]: 49.23
+2025-12-03 00:27:07,659 [DEBUG] [Sweep_A400] Using sheet name: 'H_A400_Mono_BF_Li-io_Sweep_A400' (generated: 'A400_Mono_BF_Li-io_Sweep_A400')
+2025-12-03 00:55:33,902 [INFO] [sweep] Insolation multiplier (raw=1.0) -> 1.0
+2025-12-03 00:55:33,902 [INFO] [Sweep_A200] Full combined parameters: {'itc_pv': 0.0, 'itc_bat': 0.3, 'enable_sell': 1.0, 'enforce_limit_flag': 1.0, 'A_tot': 200.0, 'offset_price': 0.0, 'insolation_mult': 1.0, 'sweep_file': 'src\\microgrid\\Launch_files\\sweep_1_itc_area.csv'}
+2025-12-03 00:55:34,028 [INFO] [Sweep_A200] Running simulation for PV type: Mono Bifacial, Battery type: Li-ion LFP
+2025-12-03 00:55:34,311 [DEBUG] === Simulation Debug Parameters ===
+2025-12-03 00:55:34,311 [DEBUG] CRF_pv: 0.078227
+2025-12-03 00:55:34,311 [DEBUG] pv_cost[Mono Bifacial]: 1230
+2025-12-03 00:55:34,311 [DEBUG] O_M[Mono Bifacial]: 20
+2025-12-03 00:55:34,311 [DEBUG] ac_e[Li-ion LFP]: 55.39
+2025-12-03 00:55:34,321 [DEBUG] ac_p[Li-ion LFP]: 49.23
+2025-12-03 00:55:46,521 [DEBUG] [Sweep_A200] Using sheet name: 'H_A200_Mono_BF_Li-io_Sweep_A200' (generated: 'A200_Mono_BF_Li-io_Sweep_A200')
