@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import os
-import pandas as pd
-import numpy as np
-import argparse
 import logging
-from amplpy import AMPL, add_to_path
 from datetime import timedelta
+
+import argparse
+import numpy as np
+import pandas as pd
+from amplpy import AMPL, add_to_path
 from openpyxl import load_workbook
-#from emissions_credits import configure_emissions
+
 from microgrid.core.model_helpers import (
     safe_int,
     is_on_peak,
@@ -19,8 +22,9 @@ from microgrid.core.model_helpers import (
     effective_battery_inputs_by_origin,
     make_hourly_csv_name,
     append_scalar_to_sweep_summary,
+    get_paths,
+    create_ampl,
 )
-
 
 from microgrid.core.pv_sizing_limits import compute_pv_sizing_limits
 
@@ -34,19 +38,39 @@ from microgrid.core.logging_utils import (
 from microgrid.core.excel_utils import write_results_to_excel
 
 
-#from emissions_credits import configure_emissions
-
-
-
-
-
-# ---------------------------------------------
-# Argument Parsing
-# ---------------------------------------------
-
-
 def extract_value(param):
+    """
+    Handle AMPL parameters that may be either scalar or .value()-style objects.
+    """
     return param.value() if hasattr(param, "value") else param
+
+
+def _safe_load_workbook(path: str):
+    """
+    Simple wrapper around openpyxl.load_workbook with basic error handling.
+    """
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Excel file not found: {path}")
+    return load_workbook(path)
+
+def normalize_hourly_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Ensure the hourly input DataFrame has a 'hour_id' column.
+
+    - If there is a 'hour_id' column already, return as-is.
+    - If there is a 'Hour' column, rename it to 'hour_id'.
+    - Otherwise, create 'hour_id' as 0..N-1.
+    """
+    if "hour_id" in df.columns:
+        return df
+
+    if "Hour" in df.columns:
+        df = df.rename(columns={"Hour": "hour_id"})
+        return df
+
+    df = df.copy()
+    df.insert(0, "hour_id", range(len(df)))
+    return df
 
 
 
@@ -657,45 +681,70 @@ def run_single_pv(
     except Exception as e:
         logging.error(f"[{run_id}] Error: {e}")
         return None, None
-if __name__ == "__main__":
+def main() -> None:
     import argparse
-    import pandas as pd
-    from microgrid.core.model_helpers import get_paths, create_ampl, reset_ampl_model
-    # import your own run function from this module
-    # from Completed_Loop_0_hour import run_single_pv
 
-    parser = argparse.ArgumentParser(description="Single configuration microgrid run")
-    parser.add_argument("--pv",  help="PV_types name (e.g., MonoSi_A)", required=True)
-    parser.add_argument("--bat", help="BATTERY_TYPES name (e.g., LFP_2h)", required=True)
-    parser.add_argument("--offset_price", type=float, default=0.0,
-                        help="$/tCO2 for abatement monetization")
-    parser.add_argument("--excel_out", default="single_run.xlsx",
-                        help="Output Excel filename")
-    parser.add_argument("--override", default="", help="CSV of overrides (optional)")
+    parser = argparse.ArgumentParser(description="Run a single PV/BESS configuration.")
+    parser.add_argument(
+        "--pv",
+        required=True,
+        help="PV type (must match PV_types in the PV table, e.g. 'Mono Si PERC')",
+    )
+    parser.add_argument(
+        "--bat",
+        required=True,
+        help="Battery type (must match BATTERY_TYPES in the battery table, e.g. 'LFP_2h')",
+    )
+    parser.add_argument(
+        "--offset_price",
+        type=float,
+        default=0.0,
+        help="Emissions offset price ($/tCO2).",
+    )
+    parser.add_argument(
+        "--excel_out",
+        required=True,
+        help="Path to output Excel file.",
+    )
+
     args = parser.parse_args()
 
+    # Load core paths and data tables
     paths = get_paths()
+    data = pd.read_csv(paths["data_path"])
+    data = normalize_hourly_data(data)
+    pv_tab = pd.read_csv(paths["pv_table_path"])
+    bat_tab = pd.read_csv(paths["bat_table_path"])
+
+    # --- PV type lookup with helpful error ---
+    pv_mask = pv_tab["PV_types"] == args.pv
+    if not pv_mask.any():
+        available_pv = ", ".join(sorted(pv_tab["PV_types"].astype(str).unique()))
+        raise SystemExit(
+            f"PV type '{args.pv}' not found in PV table.\n"
+            f"Available PV_types: {available_pv}"
+        )
+    pv_row = pv_tab.loc[pv_mask].iloc[0]
+
+    # --- Battery type lookup with helpful error ---
+    bat_mask = bat_tab["BATTERY_TYPES"] == args.bat
+    if not bat_mask.any():
+        available_bat = ", ".join(sorted(bat_tab["BATTERY_TYPES"].astype(str).unique()))
+        raise SystemExit(
+            f"Battery type '{args.bat}' not found in battery table.\n"
+            f"Available BATTERY_TYPES: {available_bat}"
+        )
+    bat_row = bat_tab.loc[bat_mask].iloc[0]
+
+    # Prepare AMPL
     ampl = create_ampl()
     reset_ampl_model(ampl, paths["model_path"])
 
-    data    = pd.read_csv(paths["data_path"])
-    pv_tab  = pd.read_csv(paths["pv_table_path"])
-    bat_tab = pd.read_csv(paths["bat_table_path"])
-
-    # choose rows by name
-    pv_row  = pv_tab.loc[pv_tab["PV_types"] == args.pv].iloc[0]
-    bat_row = bat_tab.loc[bat_tab["BATTERY_TYPES"] == args.bat].iloc[0]
-
-    # build overrides (offset_price + anything else you want to test)
+    # Override parameters and sizing limits
     override_params = {"offset_price": args.offset_price}
-    if args.override:
-        ov = pd.read_csv(args.override).to_dict(orient="records")[0]
-        override_params.update(ov)
+    sizing_limits: dict = {}
 
-    # sized limits (optional precheck if your pipeline uses it)
-    sizing_limits = {}
-
-    # call the existing library function (no AMPL init inside it!)
+    # Run the core engine
     run_single_pv(
         run_id=f"{args.pv}_{args.bat}",
         ampl=ampl,
@@ -708,5 +757,86 @@ if __name__ == "__main__":
         override_params=override_params,
         sizing_limits=sizing_limits,
     )
-    print(f"Done. Wrote {args.excel_out}")
-    
+
+
+# ======================================================================
+# CLI entrypoint
+# ======================================================================
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run a single PV/BESS configuration.")
+    parser.add_argument(
+        "--pv",
+        required=True,
+        help="PV type (must match PV_types in the PV table, e.g. 'Mono Si PERC')",
+    )
+    parser.add_argument(
+        "--bat",
+        required=True,
+        help="Battery type (must match BATTERY_TYPES in the battery table, e.g. 'LFP_2h')",
+    )
+    parser.add_argument(
+        "--offset_price",
+        type=float,
+        default=0.0,
+        help="Emissions offset price ($/tCO2).",
+    )
+    parser.add_argument(
+        "--excel_out",
+        required=True,
+        help="Path to output Excel file.",
+    )
+
+    args = parser.parse_args()
+
+    # Load core paths and data tables
+    paths = get_paths()
+    data = pd.read_csv(paths["data_path"])
+    pv_tab = pd.read_csv(paths["pv_table_path"])
+    bat_tab = pd.read_csv(paths["bat_table_path"])
+
+    # --- PV type lookup with helpful error ---
+    pv_mask = pv_tab["PV_types"] == args.pv
+    if not pv_mask.any():
+        available_pv = ", ".join(sorted(pv_tab["PV_types"].astype(str).unique()))
+        raise SystemExit(
+            f"PV type '{args.pv}' not found in PV table.\n"
+            f"Available PV_types: {available_pv}"
+        )
+    pv_row = pv_tab.loc[pv_mask].iloc[0]
+
+    # --- Battery type lookup with helpful error ---
+    bat_mask = bat_tab["BATTERY_TYPES"] == args.bat
+    if not bat_mask.any():
+        available_bat = ", ".join(sorted(bat_tab["BATTERY_TYPES"].astype(str).unique()))
+        raise SystemExit(
+            f"Battery type '{args.bat}' not found in battery table.\n"
+            f"Available BATTERY_TYPES: {available_bat}"
+        )
+    bat_row = bat_tab.loc[bat_mask].iloc[0]
+
+    # Prepare AMPL
+    ampl = create_ampl()
+    reset_ampl_model(ampl, paths["model_path"])
+
+    # Override parameters and sizing limits
+    override_params = {"offset_price": args.offset_price}
+    sizing_limits: dict = {}
+
+    # Run the core engine
+    run_single_pv(
+        run_id=f"{args.pv}_{args.bat}",
+        ampl=ampl,
+        data=data,
+        pv_data=pv_tab,
+        pv_row=pv_row,
+        bat_data=bat_tab,
+        bat_row=bat_row,
+        excel_filename=args.excel_out,
+        override_params=override_params,
+        sizing_limits=sizing_limits,
+    )
+
+
+if __name__ == "__main__":
+    main()
