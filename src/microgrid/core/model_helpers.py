@@ -8,6 +8,7 @@ import logging
 import json
 import os
 import glob
+import subprocess
 
 import pandas as pd
 import numpy as np
@@ -568,3 +569,75 @@ def compute_monthly_summary(hourly_df: pd.DataFrame, data: pd.DataFrame, ampl) -
 
     monthly_df = pd.DataFrame(monthly_data)
     return monthly_df
+
+def get_current_git_sha(default: str = "unknown") -> str:
+    """
+    Return the current Git commit SHA for the repo, or `default` if it
+    cannot be determined (e.g., not a git repo or git not installed).
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout.strip()
+    except Exception:
+        return default
+
+
+def append_to_global_results(
+    run_id: str,
+    scalar_df: pd.DataFrame,
+    sweep_csv: str,
+    insolation_mult: float,
+    model_case: str | None = None,
+) -> None:
+    """
+    Append the scalar summary for a sweep to a global CSV log.
+
+    - Each call appends one block of rows (one per configuration) to
+      Outputs/results_log/global_results.csv.
+    - We add some metadata columns so we can later filter by run, case, etc.
+
+    Parameters
+    ----------
+    run_id : str
+        The run identifier used (e.g., 'demo_base_notebook').
+    scalar_df : pd.DataFrame
+        The per-configuration summary dataframe that you already write
+        to the run-specific summary CSV.
+    sweep_csv : str
+        Path to the sweep definition CSV used for this run.
+    insolation_mult : float
+        Insolation multiplier used in this run (e.g., 1.0, 0.9, 1.1).
+    model_case : str, optional
+        A string label for the scenario/case (e.g., 'Base', 'ITC', 'Emissions').
+    """
+    # Ensure the results_log folder exists
+    results_dir = OUT_DIR / "results_log"
+    results_dir.mkdir(parents=True, exist_ok=True)
+
+    log_path = results_dir / "global_results.csv"
+
+    # Copy to avoid mutating the original scalar_df
+    df = scalar_df.copy()
+
+    # Add metadata columns for this run
+    df["run_id"] = run_id
+    df["sweep_csv"] = sweep_csv
+    df["insolation_mult"] = insolation_mult
+    df["model_case"] = model_case if model_case is not None else ""
+    df["timestamp_utc"] = datetime.utcnow().isoformat()
+    df["git_sha"] = get_current_git_sha()
+
+    # Append to CSV (create with header if it doesn't exist yet)
+    if log_path.exists():
+        df.to_csv(log_path, mode="a", header=False, index=False)
+    else:
+        df.to_csv(log_path, mode="w", header=True, index=False)
+
+    logger.info("✅ Appended %d rows to %s", len(df), log_path)
+
