@@ -1,0 +1,13 @@
+# Python virtual env
+.venv/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Build / packaging artifacts
+src/microgrid.egg-info/
+
+# Local, non-versioned outputs
+Outputs/test_base_cli/
+src/microgrid/Outputs/
